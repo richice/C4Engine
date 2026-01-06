@@ -1,0 +1,32 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="c4engine",
+    version="0.1.0",
+    description="Adapted EBR and agentic RAG for crane safety analysis",
+    author="C4Engine Team",
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
+    python_requires=">=3.9",
+    install_requires=[
+        "openai>=1.0.0",
+        "anthropic>=0.18.0",
+        "numpy>=1.24.0",
+        "pandas>=2.0.0",
+        "scikit-learn>=1.3.0",
+        "sentence-transformers>=2.2.0",
+        "faiss-cpu>=1.7.4",
+        "langchain>=0.1.0",
+        "langchain-openai>=0.0.5",
+        "tiktoken>=0.5.0",
+        "evaluate>=0.4.0",
+        "rouge-score>=0.1.2",
+        "bert-score>=0.3.13",
+        "beautifulsoup4>=4.12.0",
+        "lxml>=4.9.0",
+        "openpyxl>=3.1.0",
+        "python-dotenv>=1.0.0",
+        "pydantic>=2.0.0",
+        "tqdm>=4.65.0",
+    ],
+)
