@@ -184,10 +184,14 @@ class RAGEvaluator:
         
         # 5. LLM-based evaluation (if enabled)
         if self.enable_llm_eval:
-            llm_scores = self._llm_based_evaluation(
-                questions, generated_answers, contexts
-            )
-            metrics.update(llm_scores)
+            try:
+                llm_scores = self._llm_based_evaluation(
+                    questions, generated_answers, contexts
+                )
+                metrics.update(llm_scores)
+            except NotImplementedError:
+                # LLM evaluation not implemented, skip it
+                pass
         
         result = EvaluationResult(
             metric_name="generation_quality",
@@ -484,10 +488,16 @@ class RAGEvaluator:
         Note: This is a placeholder implementation. For production use,
         implement actual LLM-based evaluation using a model to score
         answers for quality, coherence, accuracy, etc.
+        
+        Raises:
+            NotImplementedError: This method is not yet implemented
         """
-        # TODO: Implement actual LLM-based evaluation
-        # For now, return empty dict to indicate not implemented
-        return {}
+        # Indicate that this feature is not implemented
+        raise NotImplementedError(
+            "LLM-based evaluation not implemented. "
+            "To enable, implement this method to use an LLM to score "
+            "answers for quality, coherence, and accuracy."
+        )
     
     def _calculate_overall_score(
         self,

@@ -17,37 +17,49 @@ def load_documents_from_file(file_path: str, file_type: str = "txt") -> List[str
         
     Returns:
         List of document strings
+        
+    Raises:
+        FileNotFoundError: If file does not exist
+        ValueError: If file type is unsupported
     """
     documents = []
     
-    if file_type == "txt":
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            # Split by double newline for separate documents
-            documents = [doc.strip() for doc in content.split('\n\n') if doc.strip()]
+    try:
+        if file_type == "txt":
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Split by double newline for separate documents
+                documents = [doc.strip() for doc in content.split('\n\n') if doc.strip()]
+        
+        elif file_type == "csv":
+            df = pd.read_csv(file_path)
+            # Convert each row to a document
+            for _, row in df.iterrows():
+                doc = " | ".join([f"{col}: {val}" for col, val in row.items()])
+                documents.append(doc)
+        
+        elif file_type == "json":
+            import json
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    documents = [str(item) for item in data]
+                else:
+                    documents = [str(data)]
+        
+        elif file_type == "html":
+            with open(file_path, 'r', encoding='utf-8') as f:
+                soup = BeautifulSoup(f.read(), 'html.parser')
+                # Extract text from paragraphs
+                paragraphs = soup.find_all('p')
+                documents = [p.get_text().strip() for p in paragraphs if p.get_text().strip()]
+        else:
+            raise ValueError(f"Unsupported file type: {file_type}")
     
-    elif file_type == "csv":
-        df = pd.read_csv(file_path)
-        # Convert each row to a document
-        for _, row in df.iterrows():
-            doc = " | ".join([f"{col}: {val}" for col, val in row.items()])
-            documents.append(doc)
-    
-    elif file_type == "json":
-        import json
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                documents = [str(item) for item in data]
-            else:
-                documents = [str(data)]
-    
-    elif file_type == "html":
-        with open(file_path, 'r', encoding='utf-8') as f:
-            soup = BeautifulSoup(f.read(), 'html.parser')
-            # Extract text from paragraphs
-            paragraphs = soup.find_all('p')
-            documents = [p.get_text().strip() for p in paragraphs if p.get_text().strip()]
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {file_path}")
+    except Exception as e:
+        raise Exception(f"Error loading documents from {file_path}: {e}")
     
     return documents
 
@@ -95,7 +107,13 @@ def chunk_narrative(text: str, chunk_size: int = 500, overlap: int = 50) -> List
         
     Returns:
         List of text chunks
+        
+    Raises:
+        ValueError: If overlap >= chunk_size
     """
+    if overlap >= chunk_size:
+        raise ValueError(f"Overlap ({overlap}) must be less than chunk_size ({chunk_size})")
+    
     chunks = []
     start = 0
     
@@ -129,13 +147,16 @@ def extract_features_from_text(text: str) -> Dict[str, Any]:
     Returns:
         Dictionary of extracted features
     """
+    words = text.split()
+    word_count = len(words)
+    
     features = {
         "length": len(text),
-        "word_count": len(text.split()),
+        "word_count": word_count,
         "sentence_count": text.count('.') + text.count('!') + text.count('?'),
         "has_numbers": any(char.isdigit() for char in text),
         "has_tables": '|' in text or '\t' in text,
-        "avg_word_length": sum(len(word) for word in text.split()) / len(text.split()) if text.split() else 0,
+        "avg_word_length": sum(len(word) for word in words) / word_count if word_count > 0 else 0,
     }
     
     return features
