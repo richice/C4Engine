@@ -113,7 +113,16 @@ class AgenticRAG:
             return self._process_mixed(question, retrieved, enable_multi_step)
     
     def _detect_document_type(self, documents: List) -> DocumentType:
-        """Auto-detect document type from retrieved documents."""
+        """
+        Auto-detect document type from retrieved documents.
+        
+        Note: Uses simple heuristics for document type detection.
+        For production use, consider implementing more sophisticated
+        detection methods such as:
+        - Machine learning classifier trained on document types
+        - Multiple feature extraction (layout, structure, content)
+        - Confidence scoring for ambiguous cases
+        """
         # Simple heuristic: check for table-like patterns
         tabular_indicators = 0
         narrative_indicators = 0
@@ -121,11 +130,11 @@ class AgenticRAG:
         for doc in documents[:3]:  # Check first 3 docs
             text = doc.doc_text.lower()
             
-            # Tabular indicators
+            # Tabular indicators (pipe, tab, table-related terms)
             if any(indicator in text for indicator in ["|", "\t", "column", "row", "table"]):
                 tabular_indicators += 1
             
-            # Narrative indicators
+            # Narrative indicators (common prose words)
             if any(indicator in text for indicator in ["the ", "and ", "paragraph", "section"]):
                 narrative_indicators += 1
         

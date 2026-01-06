@@ -75,10 +75,19 @@ def build_index(args, config):
 
 
 def run_query(args, config):
-    """Run a query."""
+    """
+    Run a query.
+    
+    Note: When loading an index, the original document texts need to be
+    available. In production, save/load document texts alongside the index,
+    or maintain a separate document store.
+    """
     print(f"Loading index from {args.index}...")
     retriever = EmbeddingRetrieverAdapter()
     retriever.load_index(args.index)
+    
+    # TODO: Load document texts - for now, query will work but
+    # RAG generation may be limited without full document access
     
     print("Creating RAG system...")
     rag = AgenticRAG(

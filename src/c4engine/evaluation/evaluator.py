@@ -68,7 +68,11 @@ class RAGEvaluator:
             
             for k in k_values:
                 retrieved_k = retrieved[:k]
-                retrieved_ids = [doc.get('doc_id', doc.get('id', -1)) for doc in retrieved_k]
+                retrieved_ids = []
+                for doc in retrieved_k:
+                    doc_id = doc.get('doc_id') or doc.get('id')
+                    if doc_id is not None:
+                        retrieved_ids.append(doc_id)
                 retrieved_set = set(retrieved_ids)
                 
                 # Precision@k
@@ -90,8 +94,8 @@ class RAGEvaluator:
             # MRR (Mean Reciprocal Rank)
             mrr = 0.0
             for i, doc in enumerate(retrieved):
-                doc_id = doc.get('doc_id', doc.get('id', -1))
-                if doc_id in relevant_set:
+                doc_id = doc.get('doc_id') or doc.get('id')
+                if doc_id is not None and doc_id in relevant_set:
                     mrr = 1.0 / (i + 1)
                     break
             metrics["mrr"].append(mrr)
@@ -342,8 +346,8 @@ class RAGEvaluator:
         sum_precisions = 0.0
         
         for i, doc in enumerate(retrieved):
-            doc_id = doc.get('doc_id', doc.get('id', -1))
-            if doc_id in relevant_set:
+            doc_id = doc.get('doc_id') or doc.get('id')
+            if doc_id is not None and doc_id in relevant_set:
                 hits += 1
                 precision_at_i = hits / (i + 1)
                 sum_precisions += precision_at_i
@@ -363,8 +367,8 @@ class RAGEvaluator:
         # DCG
         dcg = 0.0
         for i, doc in enumerate(retrieved):
-            doc_id = doc.get('doc_id', doc.get('id', -1))
-            rel = 1.0 if doc_id in relevant_set else 0.0
+            doc_id = doc.get('doc_id') or doc.get('id')
+            rel = 1.0 if (doc_id is not None and doc_id in relevant_set) else 0.0
             dcg += rel / np.log2(i + 2)  # i+2 because i is 0-indexed
         
         # IDCG
@@ -474,13 +478,16 @@ class RAGEvaluator:
         answers: List[str],
         contexts: Optional[List[str]],
     ) -> Dict[str, float]:
-        """Use LLM to evaluate answer quality."""
-        # Placeholder for LLM-based evaluation
-        # In practice, would use an LLM to score answers
-        return {
-            "llm_quality": 0.8,  # Placeholder
-            "llm_coherence": 0.85,  # Placeholder
-        }
+        """
+        Use LLM to evaluate answer quality.
+        
+        Note: This is a placeholder implementation. For production use,
+        implement actual LLM-based evaluation using a model to score
+        answers for quality, coherence, accuracy, etc.
+        """
+        # TODO: Implement actual LLM-based evaluation
+        # For now, return empty dict to indicate not implemented
+        return {}
     
     def _calculate_overall_score(
         self,
