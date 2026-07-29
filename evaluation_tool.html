@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Annotation Tool for C4Engine</title>
+    <!-- Tailwind CSS CDN for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Highlighted line style (yellow) */
+        .highlighted {
+            background-color: #fafa20 !important;
+        }
+        /* Styles for the HTML viewer sections */
+        .html-viewer-section {
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1rem;
+        }
+        #html-viewer-part1-2, #html-viewer-part1-3 {
+            max-height: 60vh;
+        }
+        #html-viewer-part2 {
+            max-height: 40vh;
+        }
+
+        .line-wrapper {
+            display: flex;
+            align-items: flex-start;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s ease-in-out;
+            position: relative;
+        }
+        .line-wrapper.interactive:hover {
+            background-color: #f0f4f8;
+        }
+        .line-number {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-right: 0.75rem;
+            flex-shrink: 0;
+            user-select: none;
+            width: 2.5rem; /* Increased width for better alignment */
+            text-align: right;
+        }
+        .line-content {
+            flex-grow: 1;
+            min-height: 1em;
+            white-space: pre-wrap;
+        }
+        .note-toggle-icon {
+            margin-left: 0.5rem;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 0.9rem;
+            padding: 0.2rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s ease-in-out;
+            user-select: none;
+        }
+        .note-toggle-icon:hover {
+            background-color: #cbd5e0;
+        }
+        .note-toggle-icon.active {
+            color: #3b82f6;
+        }
+        .dot-toggle-icon {
+            margin-right: 0.5rem;
+            cursor: pointer;
+            color: #a0aec0;
+            font-size: 0.8rem;
+            line-height: 1;
+            flex-shrink: 0;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background-color: currentColor;
+            display: inline-block;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+            user-select: none;
+            align-self: center;
+        }
+        .dot-toggle-icon.active {
+            background-color: #f44336;
+            color: #f44336;
+        }
+        .note-area {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 250px; /* Wider note area */
+            height: 100%;
+            border-left: 1px dashed #cbd5e0;
+            padding-left: 1rem;
+            background-color: #f8fafc;
+            display: none;
+            z-index: 10;
+            box-sizing: border-box;
+        }
+        .line-wrapper.show-line-note .note-area {
+            display: block;
+        }
+        .line-wrapper.show-line-note .line-content {
+            margin-right: 250px;
+        }
+        .display-only-header {
+            background-color: #f1f5f9;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            white-space: pre-wrap;
+            font-family: 'Menlo', 'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #334155;
+            border-left: 4px solid #64748b;
+        }
+         .stats-container {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        #drop-zone {
+            border: 2px dashed #cbd5e0;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        #drop-zone.dragover {
+            background-color: #ecfdf5;
+            border-color: #10b981;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 flex flex-col items-center min-h-screen">
+    <div class="container bg-white p-8 rounded-lg shadow-xl w-full max-w-6xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">HTML Annotation Tool for C3RAG</h1>
+
+        <!-- File Upload Section -->
+        <div id="drop-zone" class="mb-6 border-b pb-6 border-gray-200">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="html-upload">
+                Upload or Drop HTML File:
+            </label>
+            <input type="file" id="html-upload" accept=".html"
+                   class="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-full file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-violet-50 file:text-violet-700
+                          hover:file:bg-violet-100 cursor-pointer"/>
+            <p id="file-name-display" class="text-sm text-gray-500 mt-2"></p>
+        </div>
+
+        <!-- Top-level Analysis Report Display -->
+        <div id="analysis-report-display" class="display-only-header" style="background-color: #e2e8f0; border-color: #475569; display: none;"></div>
+
+        <!-- Part 1 Section (Spreadsheet) -->
+        <h2 class="text-2xl font-semibold text-gray-700 mb-3 border-t pt-6 mt-6">Part 1: Spreadsheet Data</h2>
+        <div class="flex flex-col mb-4 space-y-2">
+            <!-- Unified Controls for Part 1 -->
+            <div class="flex space-x-2 mt-2 justify-end">
+                <button id="save-annotations-part1" class="px-3 py-1 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600 shadow-md">Save Annotations</button>
+                <input type="file" id="load-annotations-part1" accept=".json" class="hidden"/>
+                <button id="load-annotations-btn-part1" class="px-3 py-1 bg-gray-500 text-white rounded-full text-sm hover:bg-gray-600 shadow-md">Load Annotations</button>
+                <button id="save-annotated-page-part1" class="px-3 py-1 bg-green-500 text-white rounded-full text-sm hover:bg-green-600 shadow-md">Save Annotated Page</button>
+            </div>
+        </div>
+        
+        <!-- Part 1 Subsections -->
+        <div id="part1-1-header" class="display-only-header" style="display: none;"></div>
+        
+        <h3 class="text-xl font-medium text-gray-600 my-3">Part 1.2: Evidence</h3>
+        <div class="stats-container">
+            <div class="text-md font-medium text-gray-700">Total Lines: <span id="total-lines-part1-2" class="font-bold text-blue-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Highlighted Lines (R): <span id="highlighted-lines-regular-part1-2" class="font-bold text-green-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Total Numbers: <span id="total-numbers-part1-2" class="font-bold text-purple-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Highlighted Lines (L): <span id="highlighted-lines-dot-part1-2" class="font-bold text-teal-600">0</span></div>
+        </div>
+        <div id="html-viewer-part1-2" class="html-viewer-section"><p class="text-center text-gray-500">Evidence section will appear here.</p></div>
+        
+        <div id="part1-3-header" class="display-only-header" style="display: none;"></div>
+        <h3 class="text-xl font-medium text-gray-600 my-3">Part 1.3: Conclusions</h3>
+        <div class="stats-container">
+            <div class="text-md font-medium text-gray-700">Total Lines: <span id="total-lines-part1-3" class="font-bold text-blue-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Highlighted Lines (R): <span id="highlighted-lines-regular-part1-3" class="font-bold text-green-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Total Numbers: <span id="total-numbers-part1-3" class="font-bold text-purple-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Highlighted Lines (L): <span id="highlighted-lines-dot-part1-3" class="font-bold text-teal-600">0</span></div>
+        </div>
+        <div id="html-viewer-part1-3" class="html-viewer-section"><p class="text-center text-gray-500">Conclusions section will appear here.</p></div>
+
+
+        <!-- Part 2 Section (Plaintext) -->
+        <h2 class="text-2xl font-semibold text-gray-700 mb-3 border-t pt-6 mt-6">Part 2: Plaintext Data</h2>
+        <div class="stats-container">
+            <div class="text-md font-medium text-gray-700">Total Lines: <span id="total-lines-part2" class="font-bold text-blue-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Highlighted Lines (R): <span id="highlighted-lines-regular-part2" class="font-bold text-green-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Total Numbers: <span id="total-numbers-part2" class="font-bold text-purple-600">0</span></div>
+            <div class="text-md font-medium text-gray-700">Highlighted Lines (L): <span id="highlighted-lines-dot-part2" class="font-bold text-teal-600">0</span></div>
+        </div>
+        <div class="flex space-x-2 mt-2 justify-end">
+            <button id="save-annotations-part2" class="px-3 py-1 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600 shadow-md">Save Annotations</button>
+            <input type="file" id="load-annotations-part2" accept=".json" class="hidden"/>
+            <button id="load-annotations-btn-part2" class="px-3 py-1 bg-gray-500 text-white rounded-full text-sm hover:bg-gray-600 shadow-md">Load Annotations</button>
+            <button id="save-annotated-page-part2" class="px-3 py-1 bg-green-500 text-white rounded-full text-sm hover:bg-green-600 shadow-md">Save Annotated Page</button>
+        </div>
+        <div id="html-viewer-part2" class="html-viewer-section">
+            <p class="text-center text-gray-500">Upload an HTML file to see Part 2 content here.</p>
+        </div>
+
+        <!-- Global Controls -->
+        <div class="flex flex-col sm:flex-row justify-end items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-6 border-t pt-4 border-gray-200">
+             <div class="flex items-center space-x-2 w-full sm:w-auto">
+                <label for="user-name" class="text-gray-700 text-sm font-bold whitespace-nowrap">User Name:</label>
+                <input type="text" id="user-name" placeholder="Enter name" value="User" class="w-24 p-2 border rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        // Part 1.2 Stats
+        const totalLinesPart1_2 = document.getElementById('total-lines-part1-2');
+        const highlightedLinesRegularPart1_2 = document.getElementById('highlighted-lines-regular-part1-2');
+        const highlightedLinesDotPart1_2 = document.getElementById('highlighted-lines-dot-part1-2');
+        const totalNumbersPart1_2 = document.getElementById('total-numbers-part1-2');
+        // Part 1.3 Stats
+        const totalLinesPart1_3 = document.getElementById('total-lines-part1-3');
+        const highlightedLinesRegularPart1_3 = document.getElementById('highlighted-lines-regular-part1-3');
+        const highlightedLinesDotPart1_3 = document.getElementById('highlighted-lines-dot-part1-3');
+        const totalNumbersPart1_3 = document.getElementById('total-numbers-part1-3');
+
+        // Part 1 Controls
+        const saveAnnotationsPart1Btn = document.getElementById('save-annotations-part1');
+        const loadAnnotationsPart1Input = document.getElementById('load-annotations-part1');
+        const loadAnnotationsBtnPart1 = document.getElementById('load-annotations-btn-part1');
+        const saveAnnotatedPagePart1Btn = document.getElementById('save-annotated-page-part1');
+        
+        // Part 1 Subsections Viewers
+        const part1_1_HeaderDiv = document.getElementById('part1-1-header');
+        const htmlViewerPart1_2 = document.getElementById('html-viewer-part1-2');
+        const part1_3_HeaderDiv = document.getElementById('part1-3-header');
+        const htmlViewerPart1_3 = document.getElementById('html-viewer-part1-3');
+
+        // Part 2
+        const totalLinesPart2 = document.getElementById('total-lines-part2');
+        const highlightedLinesRegularPart2 = document.getElementById('highlighted-lines-regular-part2');
+        const highlightedLinesDotPart2 = document.getElementById('highlighted-lines-dot-part2');
+        const totalNumbersPart2 = document.getElementById('total-numbers-part2');
+        const saveAnnotationsPart2Btn = document.getElementById('save-annotations-part2');
+        const loadAnnotationsPart2Input = document.getElementById('load-annotations-part2');
+        const loadAnnotationsBtnPart2 = document.getElementById('load-annotations-btn-part2');
+        const saveAnnotatedPagePart2Btn = document.getElementById('save-annotated-page-part2');
+        const htmlViewerPart2 = document.getElementById('html-viewer-part2');
+
+        // Global
+        const htmlUploadInput = document.getElementById('html-upload');
+        const userNameInput = document.getElementById('user-name');
+        const analysisReportDisplay = document.getElementById('analysis-report-display');
+
+        // --- State Management ---
+        let part1SubStates = {
+            part1_2: { linesData: [] },
+            part1_3: { linesData: [] }
+        };
+        let part2State = { linesData: [] };
+        let currentHtmlData = null;
+        let originalCssStyles = '';
+
+        // --- Constants ---
+        const PART1_SUFFIX = 'Spreadsheet';
+        const PART2_SUFFIX = 'Plaintext';
+        const ANALYSIS_REPORT_START_MARKER = '╭ Analysis👇Report ╮';
+        const CRANE_AGENT_END_MARKER = '╰ Crane👆Agent ╯';
+        const CORPORATE_CASE_BASE_START_MARKER = '╭ 2. Corporate Case Base ╮';
+        const CONCLUSIONS_MARKER = 'Conclusions:';
+        const WESTLAW_SPLIT_MARKER = '3. Westlaw Case Base';
+
+        const numberMatchRegex = /\b(\d+(?:[./-]\d+)*|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion)\b/gi;
+        const hasContentRegex = /[a-zA-Z0-9]/; // Regex to check for letters or numbers
+
+        // --- Core Functions ---
+
+        function cleanTextForLogic(text) {
+            if (!text) return '';
+            return text.replace(/[│─]/g, '').replace(/<[^>]*>/g, '').trim();
+        }
+        
+        function deepCleanVisualTextNodes(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                node.textContent = node.textContent.replace(/[│─]/g, '');
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                node.childNodes.forEach(deepCleanVisualTextNodes);
+            }
+        }
+
+        function updateCounts(partSubId) {
+            let stateRef, totalLinesSpan, highlightedRegularSpan, highlightedDotSpan, totalNumbersSpan;
+
+            if (partSubId === '1.2') {
+                stateRef = part1SubStates.part1_2;
+                totalLinesSpan = totalLinesPart1_2;
+                highlightedRegularSpan = highlightedLinesRegularPart1_2;
+                highlightedDotSpan = highlightedLinesDotPart1_2;
+                totalNumbersSpan = totalNumbersPart1_2;
+            } else if (partSubId === '1.3') {
+                stateRef = part1SubStates.part1_3;
+                totalLinesSpan = totalLinesPart1_3;
+                highlightedRegularSpan = highlightedLinesRegularPart1_3;
+                highlightedDotSpan = highlightedLinesDotPart1_3;
+                totalNumbersSpan = totalNumbersPart1_3;
+            } else if (partSubId === '2') {
+                stateRef = part2State;
+                totalLinesSpan = totalLinesPart2;
+                highlightedRegularSpan = highlightedLinesRegularPart2;
+                highlightedDotSpan = highlightedLinesDotPart2;
+                totalNumbersSpan = totalNumbersPart2;
+            } else {
+                return;
+            }
+            
+            const totalNonEmpty = stateRef.linesData.filter(l => l.isInteractive).length;
+            const highlightedRegular = stateRef.linesData.filter(l => l.isHighlighted).length;
+            const highlightedDot = stateRef.linesData.filter(l => l.isDotHighlighted).length;
+            const totalNumbers = stateRef.linesData.reduce((acc, line) => {
+                if (line.isInteractive) {
+                    const numbers = line.plainTextContent.match(numberMatchRegex);
+                    return acc + (numbers ? numbers.length : 0);
+                }
+                return acc;
+            }, 0);
+
+            totalLinesSpan.textContent = totalNonEmpty;
+            highlightedRegularSpan.textContent = highlightedRegular;
+            highlightedDotSpan.textContent = highlightedDot;
+            totalNumbersSpan.textContent = totalNumbers;
+        }
+        
+        function renderSection(htmlLines, container, stateRef, partSubId) {
+            container.innerHTML = '';
+            stateRef.linesData = [];
+            let visualLineNumber = 0;
+            let interactiveLineCounter = 0;
+
+            htmlLines.forEach(lineHtml => {
+                visualLineNumber++;
+                const plainText = cleanTextForLogic(lineHtml);
+                const isInteractive = hasContentRegex.test(plainText);
+
+                const lineWrapper = document.createElement('div');
+                lineWrapper.className = 'line-wrapper';
+                
+                const lineContentSpan = document.createElement('span');
+                lineContentSpan.className = 'line-content';
+                lineContentSpan.innerHTML = lineHtml || '&nbsp;';
+
+                const lineNumberSpan = document.createElement('span');
+                lineNumberSpan.className = 'line-number';
+                lineNumberSpan.textContent = visualLineNumber;
+
+                const dotIcon = document.createElement('span');
+                dotIcon.className = 'dot-toggle-icon';
+
+                const noteIcon = document.createElement('span');
+                noteIcon.className = 'note-toggle-icon';
+                noteIcon.textContent = '📝';
+
+                lineWrapper.appendChild(dotIcon);
+                lineWrapper.appendChild(lineNumberSpan);
+                lineWrapper.appendChild(lineContentSpan);
+                lineWrapper.appendChild(noteIcon);
+
+                const lineData = {
+                    partSubId,
+                    visualLineNumber,
+                    htmlContent: lineHtml,
+                    plainTextContent: plainText,
+                    isInteractive,
+                };
+
+                if (isInteractive) {
+                    interactiveLineCounter++;
+                    const lineId = `line-${partSubId}-${interactiveLineCounter}`;
+                    lineWrapper.dataset.lineId = lineId;
+                    lineWrapper.classList.add('interactive');
+
+                    Object.assign(lineData, {
+                        id: lineId,
+                        isHighlighted: false,
+                        isDotHighlighted: false,
+                        lineNote: '',
+                    });
+
+                    const noteArea = document.createElement('div');
+                    noteArea.className = 'note-area';
+                    const textArea = document.createElement('textarea');
+                    textArea.className = 'w-full h-full border rounded-md p-1 text-sm bg-gray-50 focus:ring-blue-500 focus:border-blue-500 resize-y';
+                    textArea.placeholder = 'Add line note...';
+                    textArea.rows = 1;
+                    textArea.addEventListener('input', (e) => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${e.target.scrollHeight}px`;
+                        lineData.lineNote = e.target.value;
+                    });
+                    textArea.addEventListener('click', e => e.stopPropagation());
+                    noteArea.appendChild(textArea);
+                    lineWrapper.appendChild(noteArea);
+                    
+                    lineContentSpan.addEventListener('click', e => {
+                        e.stopPropagation();
+                        lineData.isHighlighted = !lineData.isHighlighted;
+                        lineWrapper.classList.toggle('highlighted', lineData.isHighlighted);
+                        updateCounts(partSubId);
+                    });
+                    dotIcon.addEventListener('click', e => {
+                        e.stopPropagation();
+                        lineData.isDotHighlighted = !lineData.isDotHighlighted;
+                        dotIcon.classList.toggle('active', lineData.isDotHighlighted);
+                        updateCounts(partSubId);
+                    });
+                    noteIcon.addEventListener('click', e => {
+                        e.stopPropagation();
+                        const isShowing = lineWrapper.classList.toggle('show-line-note');
+                        noteIcon.classList.toggle('active', isShowing);
+                        if (isShowing) textArea.focus();
+                    });
+
+                } else {
+                    dotIcon.style.visibility = 'hidden';
+                    noteIcon.style.visibility = 'hidden';
+                }
+                
+                stateRef.linesData.push(lineData);
+                container.appendChild(lineWrapper);
+            });
+            updateCounts(partSubId);
+        }
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('text/html')) {
+                alert('Please upload a valid HTML file.');
+                return;
+            }
+            
+            fileNameDisplay.textContent = `Loaded: ${file.name}`;
+
+
+            [part1_1_HeaderDiv, analysisReportDisplay, part1_3_HeaderDiv].forEach(el => {
+                el.innerHTML = '';
+                el.style.display = 'none';
+            });
+            [htmlViewerPart1_2, htmlViewerPart1_3, htmlViewerPart2].forEach(el => {
+                el.innerHTML = '<p class="text-center text-gray-500">Processing...</p>';
+            });
+            part1SubStates = { part1_2: { linesData: [] }, part1_3: { linesData: [] } };
+            part2State = { linesData: [] };
+            updateCounts('1.2');
+            updateCounts('1.3');
+            updateCounts('2');
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                currentHtmlData = reader.result;
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(currentHtmlData, 'text/html');
+                
+                originalCssStyles = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+                document.querySelectorAll('[data-original-html-styles]').forEach(s => s.remove());
+                const styleEl = document.createElement('style');
+                styleEl.setAttribute('data-original-html-styles', 'true');
+                styleEl.textContent = originalCssStyles;
+                document.head.appendChild(styleEl);
+
+                const pre = doc.querySelector('pre');
+                if (!pre) return;
+
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = pre.innerHTML;
+                deepCleanVisualTextNodes(tempDiv);
+                let allLines = tempDiv.innerHTML.split('\n');
+
+                const reportStartIdx = allLines.findIndex(line => cleanTextForLogic(line).includes(ANALYSIS_REPORT_START_MARKER));
+                const reportEndIdx = allLines.findIndex(line => cleanTextForLogic(line).includes(CRANE_AGENT_END_MARKER));
+                if (reportStartIdx !== -1 && reportEndIdx > reportStartIdx) {
+                    const headerLines = allLines.splice(reportStartIdx, reportEndIdx - reportStartIdx + 1);
+                    analysisReportDisplay.innerHTML = headerLines.join('\n');
+                    analysisReportDisplay.style.display = 'block';
+                }
+
+                const westlawSplitIdx = allLines.findIndex(line => cleanTextForLogic(line).includes(WESTLAW_SPLIT_MARKER));
+                let part1Lines = allLines;
+                let part2Lines = [];
+                if (westlawSplitIdx !== -1) {
+                    part2Lines = allLines.splice(westlawSplitIdx);
+                }
+
+                const corpCaseStartIdx = part1Lines.findIndex(line => cleanTextForLogic(line).includes(CORPORATE_CASE_BASE_START_MARKER));
+                if (corpCaseStartIdx !== -1) {
+                    let header1_1_Lines = [];
+                    let currentIdx = corpCaseStartIdx;
+                    
+                    header1_1_Lines.push(part1Lines[currentIdx++]);
+                    
+                    // Loop to capture all header paragraphs
+                    while (currentIdx < part1Lines.length) {
+                        while (currentIdx < part1Lines.length && cleanTextForLogic(part1Lines[currentIdx]) === '') {
+                            currentIdx++;
+                        }
+                        if (currentIdx >= part1Lines.length) break;
+
+                        const currentLineText = cleanTextForLogic(part1Lines[currentIdx]);
+                        const isHeaderParagraph =
+                            currentLineText.startsWith('[') ||
+                            currentLineText.startsWith('Out of') ||
+                            currentLineText.startsWith('-Rule') ||
+                            currentLineText.startsWith('This is a 2-aspect comparison.') ||
+                            /^\[\d{1,3} cases\]:/.test(currentLineText);
+
+                        if (isHeaderParagraph) {
+                            while (currentIdx < part1Lines.length && cleanTextForLogic(part1Lines[currentIdx]) !== '') {
+                                header1_1_Lines.push(part1Lines[currentIdx++]);
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+
+
+                    part1_1_HeaderDiv.innerHTML = header1_1_Lines.join('\n');
+                    part1_1_HeaderDiv.style.display = 'block';
+
+                    let remainingPart1Lines = part1Lines.slice(currentIdx);
+                    const conclusionsIdx = remainingPart1Lines.findIndex(line => cleanTextForLogic(line) === CONCLUSIONS_MARKER);
+                    
+                    let part1_2_Lines = remainingPart1Lines;
+                    let part1_3_Lines = [];
+                    if (conclusionsIdx !== -1) {
+                        part1_2_Lines = remainingPart1Lines.slice(0, conclusionsIdx);
+                        part1_3_HeaderDiv.innerHTML = remainingPart1Lines[conclusionsIdx];
+                        part1_3_HeaderDiv.style.display = 'block';
+                        part1_3_Lines = remainingPart1Lines.slice(conclusionsIdx + 1);
+                    }
+                    renderSection(part1_2_Lines, htmlViewerPart1_2, part1SubStates.part1_2, '1.2');
+                    renderSection(part1_3_Lines, htmlViewerPart1_3, part1SubStates.part1_3, '1.3');
+                } else {
+                    renderSection(part1Lines, htmlViewerPart1_2, part1SubStates.part1_2, '1.2');
+                }
+                renderSection(part2Lines, htmlViewerPart2, part2State, '2');
+            };
+            reader.readAsText(file);
+        }
+
+        htmlUploadInput.addEventListener('change', (event) => {
+             const file = event.target.files[0];
+             if(file) handleFile(file);
+        });
+        
+        // Drag and Drop Event Listeners
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = event.dataTransfer.files[0];
+            if(file) {
+                // To make the dropped file work with the input for saving later
+                htmlUploadInput.files = event.dataTransfer.files; 
+                handleFile(file);
+            }
+        });
+
+
+        // --- Save/Load Functionality ---
+        function saveAnnotations(partId) {
+            const suffix = partId === 1 ? PART1_SUFFIX : PART2_SUFFIX;
+            const state = partId === 1 ? { linesData: [...part1SubStates.part1_2.linesData, ...part1SubStates.part1_3.linesData] } : part2State;
+
+            if (!state.linesData.some(l => l.isInteractive)) {
+                alert(`No annotatable content found for ${suffix}.`);
+                return;
+            }
+
+            const userName = userNameInput.value || 'guest';
+            const originalFileName = (htmlUploadInput.files[0]?.name.replace('.html', '')) || 'untitled';
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, '');
+            const fileName = `${userName}_${timestamp}_${originalFileName}_${suffix}.json`;
+            
+            const annotations = state.linesData.filter(l => l.isInteractive).map(l => ({
+                id: l.id,
+                isHighlighted: l.isHighlighted,
+                isDotHighlighted: l.isDotHighlighted,
+                lineNote: l.lineNote
+            }));
+
+            const dataToSave = {
+                fileVersion: '3.0',
+                htmlName: originalFileName,
+                partSuffix: suffix,
+                annotations
+            };
+
+            const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadAnnotations(event, expectedSuffix) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.partSuffix !== expectedSuffix) {
+                        alert(`This annotation file is for ${data.partSuffix}, not ${expectedSuffix}.`);
+                        return;
+                    }
+
+                    if (expectedSuffix === PART1_SUFFIX) {
+                        applyAnnotationsToViewer(data.annotations, htmlViewerPart1_2, part1SubStates.part1_2, '1.2');
+                        applyAnnotationsToViewer(data.annotations, htmlViewerPart1_3, part1SubStates.part1_3, '1.3');
+                    } else {
+                        applyAnnotationsToViewer(data.annotations, htmlViewerPart2, part2State, '2');
+                    }
+                } catch (err) {
+                    console.error("Failed to load annotations:", err);
+                    alert("Could not load annotation file. It may be corrupt.");
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function applyAnnotationsToViewer(annotations, container, stateRef, partSubId) {
+            const annotationMap = new Map(annotations.map(a => [a.id, a]));
+            stateRef.linesData.forEach(lineData => {
+                const annotation = annotationMap.get(lineData.id);
+                if (!annotation) return;
+
+                lineData.isHighlighted = annotation.isHighlighted;
+                lineData.isDotHighlighted = annotation.isDotHighlighted;
+                lineData.lineNote = annotation.lineNote || '';
+                
+                const lineWrapper = container.querySelector(`[data-line-id="${lineData.id}"]`);
+                if(lineWrapper) {
+                    lineWrapper.classList.toggle('highlighted', lineData.isHighlighted);
+                    const dotIcon = lineWrapper.querySelector('.dot-toggle-icon');
+                    if (dotIcon) dotIcon.classList.toggle('active', lineData.isDotHighlighted);
+                    const noteIcon = lineWrapper.querySelector('.note-toggle-icon');
+                    const textArea = lineWrapper.querySelector('textarea');
+                    const hasNote = !!lineData.lineNote;
+                    if(noteIcon) noteIcon.classList.toggle('active', hasNote);
+                    if(textArea) textArea.value = lineData.lineNote;
+                    lineWrapper.classList.toggle('show-line-note', hasNote);
+                    if(hasNote && textArea) {
+                        setTimeout(() => {
+                           textArea.style.height = 'auto';
+                           textArea.style.height = `${textArea.scrollHeight}px`;
+                        }, 0);
+                    }
+                }
+            });
+            updateCounts(partSubId);
+        }
+        
+        function saveAnnotatedPage(partId) {
+             const suffix = partId === 1 ? PART1_SUFFIX : PART2_SUFFIX;
+             const states = partId === 1 ? [part1SubStates.part1_2, part1SubStates.part1_3] : [part2State];
+             
+             if (states.every(s => s.linesData.length === 0)) {
+                 alert(`No content to save for ${suffix}.`);
+                 return;
+             }
+
+            const userName = userNameInput.value || 'guest';
+            const originalFileName = (htmlUploadInput.files[0]?.name.replace('.html', '')) || 'untitled';
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, '');
+            const fileName = `annotated_${userName}_${timestamp}_${originalFileName}_${suffix}.html`;
+
+            let bodyContent = '';
+            if (partId === 1) {
+                bodyContent += `<div class="display-only-header">${part1_1_HeaderDiv.innerHTML}</div>`;
+                bodyContent += `<h3>Part 1.2: Evidence</h3>`;
+                states[0].linesData.forEach(line => bodyContent += generateLineHtml(line));
+                bodyContent += `<div class="display-only-header">${part1_3_HeaderDiv.innerHTML}</div>`;
+                bodyContent += `<h3>Part 1.3: Conclusions</h3>`;
+                states[1].linesData.forEach(line => bodyContent += generateLineHtml(line));
+            } else {
+                states[0].linesData.forEach(line => bodyContent += generateLineHtml(line));
+            }
+            
+            const finalHtml = `
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Annotated - ${fileName}</title>
+<style>${originalCssStyles}</style>
+<style>
+body{font-family:'Inter',sans-serif;margin:2rem;background-color:#f3f4f6;}
+h3{font-size:1.25rem;color:#334155;margin-top:1.5rem;margin-bottom:0.5rem;border-bottom:1px solid #cbd5e0;padding-bottom:0.25rem;}
+.line-wrapper{display:flex;align-items:flex-start;padding:0.25rem 0.5rem;border-radius:0.25rem;margin-bottom:0.1rem;position:relative;background-color:#fff;}
+.highlighted{background-color:#fafa20!important;}
+.dot-icon-display{margin-right:0.5rem;width:0.75rem;height:0.75rem;border-radius:50%;background-color:#a0aec0;display:inline-block;align-self:center;}
+.dot-icon-display.active{background-color:#f44336;}
+.line-number{font-size:0.75rem;color:#64748b;margin-right:0.75rem;flex-shrink:0;width:2.5rem;text-align:right;}
+.line-content{flex-grow:1;white-space:pre-wrap;word-break:break-word;min-height:1em;}
+.note-display-area{position:relative;margin-left:auto;width:250px;padding-left:1rem;border-left:1px dashed #cbd5e0;background-color:#f8fafc;font-size:0.85rem;color:#4b5563;white-space:pre-wrap;word-break:break-word;}
+.note-title{font-weight:bold;color:#1f2937;margin-bottom:0.2rem;}
+.display-only-header{background-color:#f1f5f9;padding:1rem;border-radius:0.5rem;margin:1rem 0;white-space:pre-wrap;font-family:'Menlo',monospace;font-size:0.9em;color:#334155;border-left:4px solid #64748b;}
+</style></head><body>
+<h1>Annotated Document - ${suffix}</h1>
+${analysisReportDisplay.outerHTML}
+${bodyContent}
+</body></html>`;
+
+            const blob = new Blob([finalHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateLineHtml(line) {
+            let noteHtml = '';
+            if (line.isInteractive && line.lineNote) {
+                noteHtml = `<div class="note-display-area"><div class="note-title">Line Note:</div>${line.lineNote.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+            }
+            const dotVisibility = line.isInteractive ? '' : 'style="visibility:hidden"';
+
+            return `
+<div class="line-wrapper ${line.isHighlighted ? 'highlighted' : ''}">
+    <span class="dot-icon-display ${line.isDotHighlighted ? 'active' : ''}" ${dotVisibility}></span>
+    <span class="line-number">${line.visualLineNumber}</span>
+    <span class="line-content">${line.htmlContent || '&nbsp;'}</span>
+    ${noteHtml}
+</div>`;
+        }
+
+        // --- Attach Event Listeners ---
+        saveAnnotationsPart1Btn.addEventListener('click', () => saveAnnotations(1));
+        loadAnnotationsBtnPart1.addEventListener('click', () => loadAnnotationsPart1Input.click());
+        loadAnnotationsPart1Input.addEventListener('change', (e) => loadAnnotations(e, PART1_SUFFIX));
+        saveAnnotatedPagePart1Btn.addEventListener('click', () => saveAnnotatedPage(1));
+
+        saveAnnotationsPart2Btn.addEventListener('click', () => saveAnnotations(2));
+        loadAnnotationsBtnPart2.addEventListener('click', () => loadAnnotationsPart2Input.click());
+        loadAnnotationsPart2Input.addEventListener('change', (e) => loadAnnotations(e, PART2_SUFFIX));
+        saveAnnotatedPagePart2Btn.addEventListener('click', () => saveAnnotatedPage(2));
+
+    </script>
+</body>
+</html>
