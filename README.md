@@ -86,10 +86,4 @@ Names, internal identifiers, spreadsheet fields, file paths, API keys, endpoints
 The code is provided to clarify the implemented methods and facilitate adaptation to other datasets. Because some source data and production configurations cannot be redistributed, exact numerical reproduction of all manuscript results is not guaranteed.
 
 
-## Citation
-
-Citation information will be added upon publication of the manuscript.
-
-## Contact
-
 Questions about the released materials, data restrictions, or potential access to additional de-identified examples may be submitted through the repository’s Issues page.
